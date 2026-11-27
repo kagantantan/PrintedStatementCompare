@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { karsilastir } from "../src/analiz.js";
-import { gorselBolgeler } from "../src/ciz.js";
+import { gorselBolgeler, pdfjsKlasoru } from "../src/ciz.js";
 import { bolgeleriBul, HUCRE, hucreFarki, OLCEK } from "../src/gorsel-fark.js";
 import { ayar, KOK, ornek } from "./yardimci/ortam.js";
 
@@ -51,6 +51,12 @@ describe("görüntü farkı hesabı", () => {
 });
 
 describe("sunucuda sayfa çizimi", () => {
+  it("pdf.js'e verilen klasör yolu her işletim sisteminde / ile biter", () => {
+    expect(pdfjsKlasoru("D:\\a\\proje\\node_modules\\pdfjs-dist", "cmaps")).toBe("D:/a/proje/node_modules/pdfjs-dist/cmaps/");
+    expect(pdfjsKlasoru("/home/kullanici/proje/node_modules/pdfjs-dist/", "standard_fonts")).toBe("/home/kullanici/proje/node_modules/pdfjs-dist/standard_fonts/");
+  });
+
+
   it("örnek ekstrelerde eksik logoyu bulur", async () => {
     const sonuc = await gorselBolgeler(pdf("ekstre-eski.pdf"), pdf("ekstre-yeni.pdf"));
     expect(sonuc.uyari).toBeUndefined();

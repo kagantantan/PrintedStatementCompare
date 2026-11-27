@@ -38,8 +38,16 @@ async function tuvalYukle(): Promise<TuvalUret | null> {
   return tuvalUret;
 }
 
+/**
+ * pdf.js'e verilecek yardımcı klasör yolu. pdf.js yolun "/" ile bitmesini şart koşar ve dosya adını sonuna ekleyip
+ * okur; Windows'un "\" ayracıyla biten yolu reddeder. Node, Windows'ta da "/" ayraçlı yolu okuyabilir.
+ */
+export function pdfjsKlasoru(kok: string, ad: string): string {
+  return `${kok.replace(/\\/g, "/").replace(/\/+$/, "")}/${ad}/`;
+}
+
 const pdfjsKoku = path.dirname(createRequire(import.meta.url).resolve("pdfjs-dist/package.json"));
-const klasor = (ad: string) => path.join(pdfjsKoku, ad) + path.sep;
+const klasor = (ad: string) => pdfjsKlasoru(pdfjsKoku, ad);
 
 async function belgeAc(veri: Uint8Array) {
   const gorev = getDocument({ data: veri.slice(), verbosity: 0, standardFontDataUrl: klasor("standard_fonts"), cMapUrl: klasor("cmaps"), cMapPacked: true, wasmUrl: klasor("wasm"), iccUrl: klasor("iccs") });
