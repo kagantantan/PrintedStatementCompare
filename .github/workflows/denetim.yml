@@ -1,0 +1,42 @@
+# Her gönderimde kurulumu, testleri, derlemeyi ve açılışı üç işletim sisteminde dener.
+# Asıl amaç Windows: geliştirme macOS'ta yapılıyor, uygulama Windows'ta da çalışmalı.
+name: Denetim
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  denetim:
+    name: ${{ matrix.os }} · Node ${{ matrix.node }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, node: 22 }
+          - { os: windows-latest, node: 20 }
+          - { os: ubuntu-latest, node: 22 }
+          - { os: macos-latest, node: 22 }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - name: Kurulum
+        run: npm ci
+      - name: Tip denetimi
+        run: npm run typecheck
+      - name: Testler
+        run: npm test
+      - name: Derleme
+        run: npm run build
+      - name: Duman testi (uygulamayı açar, örnekleri karşılaştırır)
+        run: npm run duman

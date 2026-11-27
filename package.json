@@ -13,7 +13,8 @@
     "gelistir": "vite",
     "typecheck": "tsc -p sunucu/tsconfig.json && tsc -p arayuz/tsconfig.json",
     "test": "vitest run",
-    "ornek": "tsx araclar/ornek-uret.ts"
+    "ornek": "tsx araclar/ornek-uret.ts",
+    "duman": "tsx araclar/duman.ts"
   },
   "dependencies": {
     "@fastify/static": "^11.0.0",

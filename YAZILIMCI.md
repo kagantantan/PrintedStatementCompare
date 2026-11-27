@@ -106,6 +106,7 @@ npm run typecheck && npm test && npm run build
 | `npm test` | Bütün testler. Ağa çıkmaz; LLM yerine sahte bir sunucu açar. |
 | `npx vitest run sunucu/test/fark.test.ts` | Tek test dosyası |
 | `npx tsx sunucu/test/yardimci/dene.ts a.pdf b.pdf` | Arayüzsüz, LLM'siz karşılaştırma; ham farkları terminale yazar |
+| `npm run duman` | Uygulamayı gerçekten açar ve örnek ekstreleri LLM'siz karşılaştırır; kurulumun sağlam olduğunu tek komutla gösterir (önce `npm run build`) |
 | `npm run ornek` | `ornekler/` altındaki uydurma PDF'leri yeniden üretir |
 
 ## 6. Kodda nereden başlanır

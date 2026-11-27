@@ -185,9 +185,12 @@ Tek bir ölçüm yapıldı: bu depodaki örnek ekstreler, `qwen3:8b` (Ollama, di
 | `npm run build` | Arayüzü `arayuz/dist`'e derler |
 | `npm test` | Vitest. Ağa çıkmaz; LLM yerine sahte bir OpenAI uyumlu sunucu kullanır |
 | `npm run typecheck` | Sunucu ve arayüz |
+| `npm run duman` | Uygulamayı gerçekten açar, örnek ekstreleri LLM'siz karşılaştırır (önce `npm run build`) |
 | `npm run ornek` | `ornekler/` altındaki uydurma ekstre PDF'lerini yeniden üretir |
 
 Bir değişikliği bitmiş saymadan önce: `npm run typecheck && npm test && npm run build`.
+
+Her gönderimde aynı denetimler ve duman testi GitHub'da Windows, Linux ve macOS üzerinde otomatik koşar (`.github/workflows/denetim.yml`). Bu, kurulumun ve sunucunun o işletim sistemlerinde çalıştığını gösterir; tarayıcıdaki ekranı sınamaz.
 
 | Yol | Ne |
 |---|---|

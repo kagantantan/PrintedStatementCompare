@@ -122,7 +122,7 @@ export async function sunucuKur(sec: KurulumSecenekleri): Promise<FastifyInstanc
   if (fs.existsSync(path.join(dist, "index.html"))) {
     await app.register(fastifyStatic, { root: dist, cacheControl: false });
     app.setNotFoundHandler((req, reply) => {
-      if (req.url.startsWith("/api/")) return reply.code(404).send({ detail: "Böyle bir adres yok." });
+      if (req.url.startsWith("/api/") || req.url.startsWith("/pdfjs/")) return reply.code(404).send({ detail: "Böyle bir adres yok." });
       return reply.header("cache-control", "no-cache").sendFile("index.html");
     });
   } else {
