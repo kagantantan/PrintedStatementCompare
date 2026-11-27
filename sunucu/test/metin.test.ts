@@ -78,3 +78,16 @@ describe("yazım farkı sayıları eşitlemez", () => {
     expect(yazimsiz(": 12.450,75 TL")).toBe(yazimsiz(":12.450,75 TL"));
   });
 });
+
+describe("Node sürüm denetimi", () => {
+  it("22.13 ve sonrasını kabul eder, öncesini reddeder", async () => {
+    const { nodeHatasi, nodeUygunMu } = await import("../src/surum.js");
+    expect(nodeUygunMu("v22.13.0")).toBe(true);
+    expect(nodeUygunMu("v24.1.0")).toBe(true);
+    expect(nodeUygunMu("v26.0.0")).toBe(true);
+    expect(nodeUygunMu("v22.12.9")).toBe(false);
+    expect(nodeUygunMu("v20.20.2")).toBe(false);
+    expect(nodeHatasi("v20.20.2")).toContain("Node.js 22.13");
+    expect(nodeUygunMu(process.version)).toBe(true);
+  });
+});

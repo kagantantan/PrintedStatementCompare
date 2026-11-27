@@ -6,7 +6,7 @@ Bu not projeyi ilk kez indiren yazılımcı içindir: kurulum, çalıştırma, k
 
 | Gereken | Not |
 |---|---|
-| Node.js 20.19+ ya da 22.12+ | `node -v` ile bakın. Daha eski sürümde `npm install` uyarı verir, uygulama açılmayabilir. |
+| Node.js 22.13+ (24 ve sonrası da olur) | `node -v` ile bakın. Node 20 yetmez: PDF kütüphanesi 22.13+ ister. `npm install` yalnızca uyarı verir ama testler geçmez; `npm start` eski sürümü açıkça söyleyip durur. |
 | npm | Node ile gelir. |
 | npm paket deposuna erişim | İnternet ya da kurumun iç deposu (Nexus, Artifactory). Yalnızca kurulumda gerekir. |
 | Güncel bir tarayıcı | Chrome, Edge, Firefox ya da Safari. |
@@ -55,7 +55,7 @@ Anahtarı ekrana yazmak yerine ortam değişkeniyle de verebilirsiniz; bu durumd
 EKSTRE_LLM_ANAHTAR=<anahtar> npm start
 ```
 
-Windows'ta (denenmedi):
+Windows'ta (komut istemi; bu satırlar elle denenmedi):
 
 ```bat
 set EKSTRE_LLM_ANAHTAR=<anahtar>
@@ -141,5 +141,5 @@ Sunucu ile arayüzün paylaştığı bütün veri biçimleri `sunucu/src/tipler.
 
 - Proje gerçek bir eski/yeni ekstre çiftiyle henüz denenmedi. İlk gerçek denemede en olası sorun, iki sistemin farklı yazı tipi ve çizim motoru kullanması yüzünden çok sayıda "kayma" bulgusudur; Ayarlar'daki konum toleransıyla başlayın, yetmezse `fark.ts`'teki eşleştirme eşiklerine bakın.
 - Metnin rengi ve kalınlığı karşılaştırılmıyor; toplu (çok dosyalı) çalıştırma yok. Sınırların tamamı README'de.
-- Windows'ta denenmedi. Bilinen bir engel yok; anahtar dosyasının "yalnızca sahibi okur" izni Windows'ta uygulanmaz.
+- Windows: kurulum, testler, derleme ve sunucunun açılışı her gönderimde GitHub'ın Windows makinesinde otomatik sınanıyor. Ekran bir Windows tarayıcısında elle denenmedi. Anahtar dosyasının "yalnızca sahibi okur" izni Windows'ta uygulanmaz.
 - Arayüzün otomatik testi yok; ekran değişikliklerini elle deneyin.

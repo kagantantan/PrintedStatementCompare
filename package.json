@@ -5,7 +5,7 @@
   "description": "İki ekstre PDF'ini (eski sistem ile yeni sistem ya da iki şablon) karşılaştırır; farkları kurum içi LLM ile yorumlar.",
   "type": "module",
   "engines": {
-    "node": "^20.19.0 || >=22.12.0"
+    "node": ">=22.13.0"
   },
   "scripts": {
     "start": "tsx sunucu/src/index.ts",

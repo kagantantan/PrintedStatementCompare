@@ -9,7 +9,7 @@
 
 ## Başlangıç
 
-Node 20.19+ ya da 22.12+ gerekir. Başka kurulum (Docker, Python, yerel derleme) gerekmez.
+Node 22.13+ gerekir (24 ve sonrası da olur). Başka kurulum (Docker, Python, yerel derleme) gerekmez.
 
 ```bash
 npm install
@@ -157,7 +157,7 @@ Tek bir ölçüm yapıldı: bu depodaki örnek ekstreler, `qwen3:8b` (Ollama, di
 - **LLM istekleri akışsızdır:** yanıt bitene kadar ekranda yalnızca süre görünür.
 - **Toplu çalıştırma yok.** Bir seferde bir çift karşılaştırılır.
 - En fazla 200 sayfa, dosya başına 40 MB.
-- Windows'ta denenmedi.
+- Windows'ta yalnızca otomatik denetimle sınandı (kurulum, testler, derleme, sunucunun açılışı); ekran bir Windows tarayıcısında elle denenmedi.
 
 ## Sorun giderme
 
@@ -173,6 +173,7 @@ Tek bir ölçüm yapıldı: bu depodaki örnek ekstreler, `qwen3:8b` (Ollama, di
 | Uyarı: `LLM'in N bulgusu ... alınmadı` | Model farklı türden farkları tek başlıkta topladı. Bilgi amaçlıdır; o farklar makine bulgusu olarak raporda durur. |
 | Her şey "kaymış" görünüyor | İki sistemin çizim motoru farklı. Konum toleransını artırın. |
 | `metin katmanı yok` uyarısı | Dosya taranmış görüntü. Yalnızca görüntü farkı çıkar. |
+| `Bu uygulama Node.js 22.13 ya da daha yenisini ister` | Node eski; güncelleyin. PDF kütüphanesi (pdf.js) Node 22.13+ ister; Node 20 ile testler geçmiyor. |
 | `Port 8790 kullanımda` | Uygulama zaten açık ya da port dolu: `npm start -- --port 9000` |
 | Sayfada "Arayüz derlenmemiş" yazıyor | `npm run build` çalıştırın. |
 
@@ -190,7 +191,7 @@ Tek bir ölçüm yapıldı: bu depodaki örnek ekstreler, `qwen3:8b` (Ollama, di
 
 Bir değişikliği bitmiş saymadan önce: `npm run typecheck && npm test && npm run build`.
 
-Her gönderimde aynı denetimler ve duman testi GitHub'da Windows, Linux ve macOS üzerinde otomatik koşar (`.github/workflows/denetim.yml`). Bu, kurulumun ve sunucunun o işletim sistemlerinde çalıştığını gösterir; tarayıcıdaki ekranı sınamaz.
+Her gönderimde aynı denetimler ve duman testi GitHub'da Windows (Node 22 ve 24), Linux ve macOS üzerinde otomatik koşar (`.github/workflows/denetim.yml`). Bu, kurulumun ve sunucunun o işletim sistemlerinde çalıştığını gösterir; tarayıcıdaki ekranı sınamaz.
 
 | Yol | Ne |
 |---|---|

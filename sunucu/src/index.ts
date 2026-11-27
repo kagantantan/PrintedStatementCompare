@@ -3,8 +3,15 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import { ANAHTAR_DEGISKENI, AyarDeposu } from "./ayarlar.js";
-import { sunucuKur } from "./sunucu.js";
+import { nodeHatasi, nodeUygunMu } from "./surum.js";
+
+// Sürüm denetimi diğer modüller yüklenmeden yapılır: eski Node'da pdf.js yüklenirken anlaşılmaz bir hata verir.
+if (!nodeUygunMu(process.version)) {
+  console.error(`\n${nodeHatasi(process.version)}\n`);
+  process.exit(1);
+}
+const { ANAHTAR_DEGISKENI, AyarDeposu } = await import("./ayarlar.js");
+const { sunucuKur } = await import("./sunucu.js");
 
 const { values } = parseArgs({ options: { port: { type: "string" } }, strict: false });
 const port = Number(values.port ?? process.env.EKSTRE_PORT ?? 8790);
