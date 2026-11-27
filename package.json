@@ -1,6 +1,6 @@
 {
   "name": "ekstre-karsilastir",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "İki ekstre PDF'ini (eski sistem ile yeni sistem ya da iki şablon) karşılaştırır; farkları kurum içi LLM ile yorumlar.",
   "type": "module",

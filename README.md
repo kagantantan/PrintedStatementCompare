@@ -1,6 +1,6 @@
 # Ekstre Karşılaştır
 
-İki kredi kartı ekstresi PDF'ini karşılaştırır, farkları sayfa üzerinde işaretler ve kurum içi LLM'e yorumlatır. Tarayıcıdan kullanılır, yalnızca bu bilgisayarda çalışır.
+İki kredi kartı ekstresi PDF'ini karşılaştırır, farkları sayfa üzerinde işaretler ve kurum içi LLM'e yorumlatır. İki kullanım biçimi var: tarayıcıdan (varsayılan; yalnızca bu bilgisayarda çalışır) ve başka uygulamaların ağdan çağırdığı bir REST servisi olarak ([docs/API.md](docs/API.md)).
 
 | Mod | Soru | Ne zaman |
 |---|---|---|
@@ -40,7 +40,7 @@ flowchart LR
 
 1. **Metin** sunucuda okunur (pdf.js): her etiket, değer ve tablo hücresi konumu ve puntosuyla bir parçadır.
 2. **Fark motoru** iki belgenin parçalarını eşleştirir ve ham farkları çıkarır. LLM kullanmaz; aynı girdiye her zaman aynı sonucu verir.
-3. **Sayfa görüntüleri** tarayıcıda çizilir ve hücre hücre karşılaştırılır. Metnin açıklamadığı bölgeler (logo, çizgi, kutu, renk) görsel fark olur.
+3. **Sayfa görüntüleri** çizilir ve hücre hücre karşılaştırılır. Metnin açıklamadığı bölgeler (logo, çizgi, kutu, renk) görsel fark olur. Arayüzde bu iş tarayıcıda yapılır; servis API'sinde aynı hesabı sunucu yapar.
 4. **LLM** ham farkları okur, ilgili olanları tek bulguda toplar, önem verir ve kullanıcının notuyla eşleştirir. Belgeleri baştan okumaz.
 
 ### Bulunan fark türleri
@@ -121,10 +121,29 @@ Ollama'da sistem istemine `/no_think` eklemek düşünmeyi kapatmadı.
 
 İki sistem farklı çizim motoru kullanıyorsa ve her şey "kaymış" görünüyorsa konum toleransını artırın.
 
+## Servis olarak çalıştırmak
+
+Başka uygulamalar karşılaştırmayı ağdan isteyebilir: iki PDF gönderilir, iş numarası alınır, sonuç sonra sorulur. Ağa açmak bilinçli bir adımdır; servis anahtarı tanımlanmadan sunucu ağa açılmaz.
+
+```bash
+EKSTRE_SERVIS_ANAHTARLARI=<anahtar> npm start -- --dinle 0.0.0.0
+```
+
+| Konu | Davranış |
+|---|---|
+| Kimlik doğrulama | Her istekte servis anahtarı (`Authorization: Bearer` ya da `x-api-key`). Çağıran her uygulamaya ayrı anahtar verilebilir; biri diğerinin işini göremez. |
+| Uzun süren iş | İstek açık bekletilmez: `POST` iş numarası döner, sonuç `GET` ile sorulur. İşler sırayla çalışır. |
+| Görüntü farkı | Sunucuda hesaplanır; tarayıcı gerekmez. |
+| Arayüz ve ayarlar | Ağdan açılmaz; yalnızca sunucunun kendi bilgisayarından. LLM ayarını çağıran uygulama değiştiremez. |
+| Şifreleme | Yok (HTTP). Önüne TLS sonlandıran bir vekil koyun. |
+
+Uçlar, istek ve yanıt biçimleri, örnekler: [docs/API.md](docs/API.md).
+
 ## Veri nereye gider
 
-- Dosyalar tarayıcıda ve bu bilgisayardaki sunucuda işlenir. **Diske yazılmaz, günlüğe girmez, saklanmaz.**
-- Sunucu yalnızca `127.0.0.1` üzerinde dinler; başka adresten ya da başka siteden gelen isteği reddeder.
+- Dosyalar tarayıcıda ve sunucuda işlenir. **Diske yazılmaz, günlüğe girmez.** Arayüzden yapılan karşılaştırma sunucuda saklanmaz.
+- Servis API'sinde biten işin raporu, çağıran alsın diye **bellekte** bekler: varsayılan 30 dakika, ya da çağıran silene kadar. Sunucu kapanınca hepsi gider.
+- Sunucu varsayılan olarak yalnızca `127.0.0.1` üzerinde dinler; başka siteden gelen isteği reddeder. Ağa açıldığında bile arayüz ve ayarlar yalnızca sunucunun kendi bilgisayarından açılır.
 - Dışarıya giden tek şey ayarladığınız LLM'e gönderilen istektir: bulunan farkların metni (etiket, eski ve yeni değer, satırın kalanı) ve yazdığınız not. Belgenin tamamı gitmez. Görsel girdi açıksa ilk altı sayfanın görüntüsü de gider.
 - Maskeleme kart, hesap, kimlik ve IBAN gibi uzun numaraları kapatır. **İsim, adres ve tutarlar maskelenmez**; LLM kurum dışındaysa bunu hesaba katın.
 - İndirilen rapor ekstre içeriği taşır.
@@ -155,9 +174,10 @@ Tek bir ölçüm yapıldı: bu depodaki örnek ekstreler, `qwen3:8b` (Ollama, di
 - **İki sistem farklı yazı tipi kullanıyorsa** görüntü farkı metnin her yerinde yanar. Bu yüzden metnin üstüne düşen görüntü farkları bulgu yapılmaz; yalnızca "Görüntü farkı" katmanında görünür.
 - **Çok ince ve soluk çizgiler** görüntü karşılaştırmasında kaçabilir.
 - **LLM istekleri akışsızdır:** yanıt bitene kadar ekranda yalnızca süre görünür.
-- **Toplu çalıştırma yok.** Bir seferde bir çift karşılaştırılır.
+- **Hazır bir toplu çalıştırma aracı yok.** Arayüzde bir seferde bir çift karşılaştırılır; çok sayıda çift için servis API'sini çağıran bir betik yazmak gerekir.
+- **Servis modu sade tutuldu:** TLS yok (vekil gerekir), işler bellekte durur (yeniden başlatınca kaybolur), tek bir ortak LLM ayarı vardır, istek hızı sınırı yoktur.
 - En fazla 200 sayfa, dosya başına 40 MB.
-- Windows'ta yalnızca otomatik denetimle sınandı (kurulum, testler, derleme, sunucunun açılışı); ekran bir Windows tarayıcısında elle denenmedi.
+- Windows'ta yalnızca otomatik denetimle sınandı (kurulum, testler, derleme, sunucunun açılışı, servis API'si); ekran bir Windows tarayıcısında elle denenmedi.
 
 ## Sorun giderme
 
@@ -174,6 +194,11 @@ Tek bir ölçüm yapıldı: bu depodaki örnek ekstreler, `qwen3:8b` (Ollama, di
 | Her şey "kaymış" görünüyor | İki sistemin çizim motoru farklı. Konum toleransını artırın. |
 | `metin katmanı yok` uyarısı | Dosya taranmış görüntü. Yalnızca görüntü farkı çıkar. |
 | `Bu uygulama Node.js 22.13 ya da daha yenisini ister` | Node eski; güncelleyin. PDF kütüphanesi (pdf.js) Node 22.13+ ister; Node 20 ile testler geçmiyor. |
+| Servis API'si `401` dönüyor | Servis anahtarı eksik ya da yanlış; ya da sunucuda hiç anahtar tanımlı değil (`EKSTRE_SERVIS_ANAHTARLARI`). LLM anahtarı servis anahtarı değildir. |
+| Servis API'si `429` dönüyor | Kuyruk dolu. `Retry-After` kadar bekleyin; kalıcıysa `EKSTRE_AZAMI_SIRA` değerini artırın. |
+| `403: Arayüz ve ayarlar yalnızca sunucunun çalıştığı bilgisayardan açılır` | Arayüze ağdan girilmeye çalışıldı. Başka uygulamalar `/api/v1` uçlarını kullanır. |
+| `Sunucu ... adresini dinleyecek ama servis anahtarı tanımlı değil` | Anahtarsız ağa açılmaz. Anahtar tanımlayın ya da `--dinle` seçeneğini kaldırın. |
+| Uyarı: `Görüntü farkı hesaplanamadı` | Sunucuda çizim kütüphanesi (`@napi-rs/canvas`) kurulamamış; `npm install` çıktısına bakın. Metin farkları yine çıkar. |
 | `Port 8790 kullanımda` | Uygulama zaten açık ya da port dolu: `npm start -- --port 9000` |
 | Sayfada "Arayüz derlenmemiş" yazıyor | `npm run build` çalıştırın. |
 
@@ -201,9 +226,12 @@ Her gönderimde aynı denetimler ve duman testi GitHub'da Windows (Node 22 ve 24
 | `sunucu/src/istem.ts` | LLM'e giden istem |
 | `sunucu/src/llm.ts` | OpenAI uyumlu istemci, bağlantı sınama |
 | `sunucu/src/analiz.ts` | Karşılaştırmanın tamamı; LLM'e güven sınırı; hüküm |
+| `sunucu/src/gorsel-fark.ts`, `ciz.ts` | Görüntü karşılaştırma hesabı (tarayıcıyla ortak) ve sunucuda sayfa çizimi |
+| `sunucu/src/isler.ts`, `servis.ts` | Servis API'sinin iş kuyruğu; ağa açma ve servis anahtarları |
 | `sunucu/src/ayarlar.ts` | Ayar dosyası, doğrulama, anahtar |
 | `sunucu/src/sunucu.ts`, `tipler.ts` | Fastify API; sunucu ile arayüzün paylaştığı tipler |
-| `arayuz/src/belge.ts` | Sayfa çizimi ve görüntü karşılaştırması (tarayıcıda) |
+| `arayuz/src/belge.ts` | Sayfa çizimi (tarayıcıda) |
+| `docs/API.md` | Servis API'sinin belgesi |
 | `arayuz/src/` | Vite + React arayüz |
 | `araclar/ornek-uret.ts` | Örnek ekstre üreticisi |
 | `ornekler/` | Uydurma örnekler: banka, müşteri, kart ve işlemler gerçek değildir |

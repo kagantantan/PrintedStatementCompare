@@ -7,6 +7,7 @@
 //     tek istisna kullanıcının "bilinen farklar" notunun o farkı kapsamasıdır.
 //   - LLM bir bulguda yalnızca aynı türden farkları toplayabilir; tutar ile biçimi aynı başlığa koyarsa o bulgu alınmaz.
 //   - Hüküm LLM'in sözünden değil, bulgulardan kuralla hesaplanır.
+import { gorselBolgeler } from "./ciz.js";
 import { farkBul, tarafAdlari } from "./fark.js";
 import { istemKur } from "./istem.js";
 import { jsonAyikla, sohbet, type Mesaj } from "./llm.js";
@@ -22,9 +23,11 @@ const dahaOnemli = (x: Onem, y: Onem): Onem => (onemSira(x) <= onemSira(y) ? x :
 
 const AZAMI_GORUNTU = 6;
 
+const pdfVerisi = (girdi: DosyaGirdisi) => new Uint8Array(Buffer.from(girdi.pdf_base64 ?? "", "base64"));
+
 async function belgeOku(girdi: DosyaGirdisi, taraf: string): Promise<Belge> {
   if (!girdi || typeof girdi.ad !== "string") throw new IstekHatasi(`${taraf} dosyası eksik.`);
-  if (girdi.pdf_base64) return pdfOku(new Uint8Array(Buffer.from(girdi.pdf_base64, "base64")), girdi.ad);
+  if (girdi.pdf_base64) return pdfOku(pdfVerisi(girdi), girdi.ad);
   // Resim dosyası: metin katmanı yok, yalnızca sayfa boyutları bilinir.
   const sayfalar = (girdi.sayfalar ?? []).map((s, i) => ({ no: i + 1, en: Number(s.en) || 595, boy: Number(s.boy) || 842 }));
   if (!sayfalar.length) throw new IstekHatasi(`${taraf} dosyası okunamadı: ${girdi.ad}`);
@@ -44,7 +47,15 @@ export async function karsilastir(istek: KarsilastirIstegi, ayar: Ayar, anahtar:
     if (!belge.parcalar.length) uyarilar.push(`${taraf} (${belge.ad}) içinde metin katmanı yok; taranmış görüntü ya da resim olabilir. Bu taraf için yalnızca görsel farklar çıkarıldı.`);
   }
 
-  const farklar = farkBul(a, b, { mod, yalniz_yapi: yalnizYapi, konum_toleransi: ayar.karsilastirma.konum_toleransi, punto_toleransi: ayar.karsilastirma.punto_toleransi }, istek.gorsel_bolgeler ?? []);
+  // Görüntü farkı: arayüz kendi hesapladığını gönderir; göndermeyen (API) için sunucu sayfaları çizer.
+  let bolgeler = Array.isArray(istek.gorsel_bolgeler) ? istek.gorsel_bolgeler : undefined;
+  if (!bolgeler && istek.gorsel_fark !== false && istek.a.pdf_base64 && istek.b.pdf_base64) {
+    const gorsel = await gorselBolgeler(pdfVerisi(istek.a), pdfVerisi(istek.b));
+    bolgeler = gorsel.bolgeler;
+    if (gorsel.uyari) uyarilar.push(gorsel.uyari);
+  }
+
+  const farklar = farkBul(a, b, { mod, yalniz_yapi: yalnizYapi, konum_toleransi: ayar.karsilastirma.konum_toleransi, punto_toleransi: ayar.karsilastirma.punto_toleransi }, bolgeler ?? []);
 
   let bulgular: Bulgu[] = [];
   let ozet = "";

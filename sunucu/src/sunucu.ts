@@ -1,5 +1,9 @@
-// Fastify API ve derlenmiş arayüzün sunumu. Yalnızca bu makineden (127.0.0.1) erişilir.
-// Yüklenen ekstreler bellekte işlenir: diske yazılmaz, günlüğe girmez, sunucuda saklanmaz.
+// Fastify API ve derlenmiş arayüzün sunumu.
+//
+// İki ayrı kapı vardır:
+//   - Arayüz ve onun API'si (/, /api/ayar, /api/karsilastir...): yalnızca sunucunun çalıştığı bilgisayardan.
+//   - Servis API'si (/api/v1/...): başka uygulamalar için; her istek servis anahtarı ister, işler kuyruğa girer.
+// Yüklenen ekstreler bellekte işlenir: diske yazılmaz, günlüğe girmez.
 import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
@@ -7,15 +11,28 @@ import fastifyStatic from "@fastify/static";
 import Fastify, { type FastifyInstance } from "fastify";
 import { IstekHatasi, karsilastir } from "./analiz.js";
 import { AyarDeposu, AyarHatasi, ayarDogrula } from "./ayarlar.js";
+import { IsKuyrugu, KuyrukDolu } from "./isler.js";
 import { baglantiSina, LlmHatasi } from "./llm.js";
 import { PdfHatasi } from "./pdf.js";
-import type { AyarKaydi, AyarYaniti, KarsilastirIstegi } from "./tipler.js";
+import { anahtarTani, yerelAdresMi, type ServisAyari } from "./servis.js";
+import type { AyarKaydi, AyarYaniti, KarsilastirIstegi, SaglikYaniti } from "./tipler.js";
 
 export interface KurulumSecenekleri {
   kok: string;
   port: number;
   depo?: AyarDeposu;
+  /** Servis API'sinin anahtarları ve kuyruk sınırları. Verilmezse /api/v1 anahtarsız olduğu için her isteği reddeder. */
+  servis?: Pick<ServisAyari, "ozetler" | "es_zamanli" | "azami_sira" | "omur_dk">;
 }
+
+declare module "fastify" {
+  interface FastifyRequest {
+    /** Servis API'sinde isteği gönderen anahtarın kısa kimliği. */
+    sahip: string;
+  }
+}
+
+const pdfMi = (base64: unknown) => typeof base64 === "string" && Buffer.from(base64.slice(0, 8), "base64").toString("latin1").startsWith("%PDF");
 
 const ORNEKLER: Record<string, { ad: string; aciklama: string; mod: "donusum" | "sablon"; a: string; b: string; not?: string }> = {
   donusum: {
@@ -41,8 +58,23 @@ export async function sunucuKur(sec: KurulumSecenekleri): Promise<FastifyInstanc
   // Günlük kapalı: istek gövdelerinde ekstre içeriği var.
   const app = Fastify({ logger: false, bodyLimit: 150 * 1024 * 1024 });
 
+  const servis = sec.servis ?? { ozetler: [], es_zamanli: 1, azami_sira: 20, omur_dk: 30 };
+  app.decorateRequest("sahip", "");
+
   const izinliHostlar = new Set([`127.0.0.1:${sec.port}`, `localhost:${sec.port}`]);
   app.addHook("onRequest", async (req, reply) => {
+    const yol = req.url.split("?")[0]!;
+    if (yol.startsWith("/api/v1/")) {
+      // Servis API'si: nereden gelirse gelsin anahtar ister. Sağlık ucu yalnızca "ayakta" der, anahtarsızdır.
+      if (yol === "/api/v1/saglik") return;
+      if (!servis.ozetler.length) return reply.code(401).send({ detail: "Bu sunucuda servis anahtarı tanımlı değil; servis API'si kapalı. Sunucuyu yöneten kişi EKSTRE_SERVIS_ANAHTARLARI tanımlamalı." });
+      const sahip = anahtarTani(req.headers, servis.ozetler);
+      if (!sahip) return reply.code(401).header("www-authenticate", "Bearer").send({ detail: "Servis anahtarı eksik ya da geçersiz. Anahtarı Authorization: Bearer <anahtar> başlığıyla gönderin." });
+      req.sahip = sahip;
+      return;
+    }
+    // Arayüz, ayarlar ve yardımcı dosyalar: yalnızca sunucunun çalıştığı bilgisayardan.
+    if (!yerelAdresMi(req.ip)) return reply.code(403).send({ detail: "Arayüz ve ayarlar yalnızca sunucunun çalıştığı bilgisayardan açılır. Ağdan çağırmak için /api/v1 uçlarını servis anahtarıyla kullanın." });
     if (!izinliHostlar.has(String(req.headers.host ?? ""))) return reply.code(403).send({ detail: `İzin verilmeyen adres: ${req.headers.host ?? "-"}` });
     const koken = req.headers.origin;
     if (koken && !izinliHostlar.has(koken.replace(/^https?:\/\//, ""))) return reply.code(403).send({ detail: "Bu istek başka bir siteden geliyor; reddedildi." });
@@ -52,7 +84,7 @@ export async function sunucuKur(sec: KurulumSecenekleri): Promise<FastifyInstanc
     const e = hata as Error & { statusCode?: number; code?: string };
     if (e instanceof AyarHatasi || e instanceof IstekHatasi || e instanceof PdfHatasi) return reply.code(400).send({ detail: e.message });
     if (e instanceof LlmHatasi) return reply.code(502).send({ detail: e.message });
-    if (e.code === "FST_ERR_CTP_BODY_TOO_LARGE") return reply.code(413).send({ detail: "Dosyalar çok büyük (toplam 100 MB sınırı)." });
+    if (e.code === "FST_ERR_CTP_BODY_TOO_LARGE") return reply.code(413).send({ detail: "İstek çok büyük (gövde sınırı 150 MB)." });
     if (e.statusCode && e.statusCode < 500) return reply.code(e.statusCode).send({ detail: "İstek anlaşılamadı." });
     console.error(`Beklenmeyen hata: ${e.message}`);
     return reply.code(500).send({ detail: "Beklenmeyen bir hata oluştu. Sunucu penceresindeki mesaja bakın." });
@@ -82,6 +114,43 @@ export async function sunucuKur(sec: KurulumSecenekleri): Promise<FastifyInstanc
   app.post("/api/karsilastir", async (req) => {
     const istek = (req.body ?? {}) as KarsilastirIstegi;
     return karsilastir(istek, depo.oku(), depo.anahtar());
+  });
+
+  // ---- Servis API'si (v1): iş kuyruğu
+  const kuyruk = new IsKuyrugu((istek) => karsilastir(istek, depo.oku(), depo.anahtar()), { es_zamanli: servis.es_zamanli, azami_sira: servis.azami_sira, omur_ms: servis.omur_dk * 60_000 });
+  app.addHook("onClose", async () => kuyruk.kapat());
+
+  app.get("/api/v1/saglik", async (): Promise<SaglikYaniti> => {
+    const ayar = depo.oku();
+    return { durum: "ayakta", surum, llm_tanimli: Boolean(ayar.llm.adres && ayar.llm.model), ...kuyruk.durum() };
+  });
+
+  app.post("/api/v1/karsilastirmalar", async (req, reply) => {
+    const istek = (req.body ?? {}) as KarsilastirIstegi;
+    // Açık hatalar işe dönüşmeden, hemen söylenir.
+    if (istek.mod !== "donusum" && istek.mod !== "sablon") throw new IstekHatasi("mod alanı donusum ya da sablon olmalı.");
+    for (const taraf of ["a", "b"] as const) {
+      if (!istek[taraf] || typeof istek[taraf].ad !== "string") throw new IstekHatasi(`${taraf} alanı eksik: { "ad": "dosya.pdf", "pdf_base64": "..." } biçiminde olmalı.`);
+      if (!pdfMi(istek[taraf].pdf_base64)) throw new IstekHatasi(`${taraf}.pdf_base64 bir PDF dosyasının base64 hali olmalı.`);
+    }
+    try {
+      const is = kuyruk.ekle(req.sahip, istek);
+      return reply.code(202).header("location", `/api/v1/karsilastirmalar/${is.kimlik}`).send(is);
+    } catch (e) {
+      if (e instanceof KuyrukDolu) return reply.code(429).header("retry-after", "30").send({ detail: e.message });
+      throw e;
+    }
+  });
+
+  app.get<{ Params: { kimlik: string } }>("/api/v1/karsilastirmalar/:kimlik", async (req, reply) => {
+    const is = kuyruk.al(req.sahip, req.params.kimlik);
+    if (!is) return reply.code(404).send({ detail: "Böyle bir iş yok ya da sonucunun saklanma süresi doldu." });
+    return reply.header("cache-control", "no-store").send(is);
+  });
+
+  app.delete<{ Params: { kimlik: string } }>("/api/v1/karsilastirmalar/:kimlik", async (req, reply) => {
+    if (!kuyruk.sil(req.sahip, req.params.kimlik)) return reply.code(404).send({ detail: "Böyle bir iş yok ya da sonucunun saklanma süresi doldu." });
+    return reply.code(204).send();
   });
 
   const ornekKlasoru = path.join(sec.kok, "ornekler");

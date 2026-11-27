@@ -78,6 +78,11 @@ Model yanıttan önce uzun uzun düşünüyorsa (Qwen3 gibi) README'deki "Düş�
 | `EKSTRE_LLM_ANAHTAR` | API anahtarı; dosyadaki ve bellekteki anahtardan önceliklidir | yok |
 | `EKSTRE_AYAR_KLASORU` | Ayar dosyasının durduğu klasör | `~/.ekstre-karsilastir` |
 | `NODE_EXTRA_CA_CERTS` | Node'un tanıyacağı ek kök sertifika | yok |
+| `--dinle <adres>` ya da `EKSTRE_DINLE` | Dinlenecek adres; ağa açmak için `0.0.0.0`. Servis anahtarı yoksa sunucu başlamaz. | `127.0.0.1` |
+| `EKSTRE_SERVIS_ANAHTARLARI` | Servis API'sini çağıranların anahtarları, virgülle ayrılmış | yok |
+| `EKSTRE_ES_ZAMANLI`, `EKSTRE_AZAMI_SIRA`, `EKSTRE_SONUC_OMRU_DK` | Servis kuyruğunun sınırları | 1, 20, 30 |
+
+Uygulamayı başka uygulamaların çağıracağı bir servis olarak kurmak için: [docs/API.md](docs/API.md).
 
 Ayar dosyası `ayar.json`'dır; elle de düzenlenebilir, açılışta doğrulanır. Anahtarı bu dosyaya yazmayın: uygulama reddeder.
 
@@ -122,7 +127,9 @@ Bir karşılaştırmanın yolu tek fonksiyondadır: `sunucu/src/analiz.ts` için
 | LLM yanıtının nasıl denetlendiği, hüküm | `sunucu/src/analiz.ts`: `yanitiIsle`, `hukumVer` |
 | Servise bağlantı, hata mesajları | `sunucu/src/llm.ts` |
 | Yeni bir ayar eklemek | `sunucu/src/tipler.ts` (tip), `sunucu/src/ayarlar.ts` (varsayılan ve doğrulama), `arayuz/src/Ayarlar.tsx` (ekran), README (belge) |
-| Görüntü farkının eşiği | `arayuz/src/belge.ts`: `OLCEK`, `HUCRE`, `ESIK` |
+| Görüntü farkının eşiği | `sunucu/src/gorsel-fark.ts`: `OLCEK`, `HUCRE`, `ESIK` (tarayıcı ve sunucu aynı hesabı kullanır) |
+| Servis API'sine uç eklemek, kuyruk davranışı | `sunucu/src/sunucu.ts` (v1 uçları), `sunucu/src/isler.ts`; belge: `docs/API.md` |
+| Kim nereye erişebilir | `sunucu/src/sunucu.ts` içindeki `onRequest` kancası, `sunucu/src/servis.ts` |
 | Ekranlar | `arayuz/src/Giris.tsx`, `Sonuc.tsx`, `Ayarlar.tsx` |
 
 Sunucu ile arayüzün paylaştığı bütün veri biçimleri `sunucu/src/tipler.ts` dosyasındadır; arayüz onu yalnızca tip olarak içe alır.
@@ -131,6 +138,7 @@ Sunucu ile arayüzün paylaştığı bütün veri biçimleri `sunucu/src/tipler.
 
 - **Gerçek ekstre depoya girmez.** Denemek için `gercek/` klasörünü kullanın; `.gitignore` onu dışarıda tutar. Örnekler ve testler uydurma veriyle çalışır.
 - **Anahtar hiçbir yere yazılmaz:** ayar dosyasına, koda, günlüğe, API yanıtına, hata mesajına. Bunu koruyan testler var (`sunucu/test/sunucu.test.ts`, `llm.test.ts`); gevşetmeyin.
+- **Erişim kuralları gevşetilmez.** Anahtarsız ağa açılmaz; arayüz ve ayarlar ağdan açılmaz; bir anahtar başkasının işini göremez (`sunucu/test/servis.test.ts`). Bunları değiştiren bir iş ayrıca konuşulmalı.
 - **LLM'e güven sınırı gevşetilmez.** `analiz.ts`'in başındaki kurallar (LLM fark silemez, uyduramaz, dönüşümde önemi düşüremez, türleri karıştıramaz) testlerle korunur. Bunları değiştiren bir iş ayrıca konuşulmalı.
 - **Testler ağa çıkmaz.** LLM gerektiren test `sunucu/test/yardimci/ortam.ts` içindeki `sahteLlm` ile yazılır.
 - **Davranış değişikliği test ister.** Yeni fark türü, yeni kural, yeni hata mesajı: önce testi.
@@ -140,6 +148,6 @@ Sunucu ile arayüzün paylaştığı bütün veri biçimleri `sunucu/src/tipler.
 ## 8. Bilinmesi gerekenler
 
 - Proje gerçek bir eski/yeni ekstre çiftiyle henüz denenmedi. İlk gerçek denemede en olası sorun, iki sistemin farklı yazı tipi ve çizim motoru kullanması yüzünden çok sayıda "kayma" bulgusudur; Ayarlar'daki konum toleransıyla başlayın, yetmezse `fark.ts`'teki eşleştirme eşiklerine bakın.
-- Metnin rengi ve kalınlığı karşılaştırılmıyor; toplu (çok dosyalı) çalıştırma yok. Sınırların tamamı README'de.
+- Metnin rengi ve kalınlığı karşılaştırılmıyor; hazır bir toplu çalıştırma aracı yok (servis API'siyle betikten yapılabilir). Sınırların tamamı README'de.
 - Windows: kurulum, testler, derleme ve sunucunun açılışı her gönderimde GitHub'ın Windows makinesinde otomatik sınanıyor. Ekran bir Windows tarayıcısında elle denenmedi. Anahtar dosyasının "yalnızca sahibi okur" izni Windows'ta uygulanmaz.
 - Arayüzün otomatik testi yok; ekran değişikliklerini elle deneyin.

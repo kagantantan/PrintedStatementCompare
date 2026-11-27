@@ -2,6 +2,7 @@
 // Sayfa çizimi tarayıcıda yapılır; böylece sunucunun yerel derlenen bir bağımlılığı olmaz.
 import * as pdfjs from "pdfjs-dist";
 import isciUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import { bolgeleriBul, hucreFarki, OLCEK } from "../../sunucu/src/gorsel-fark";
 import type { DosyaGirdisi, GorselBolge, SayfaBilgisi } from "../../sunucu/src/tipler";
 
 pdfjs.GlobalWorkerOptions.workerSrc = isciUrl;
@@ -121,14 +122,7 @@ export interface SayfaFarki {
   oran: number;
 }
 
-const OLCEK = 2; // karşılaştırma çözünürlüğü: nokta başına 2 piksel
-const HUCRE = 4; // nokta
-const ESIK = 0.04; // hücrenin ortalama renginde bu kadar fark (0..1) varsa hücre farklıdır
-
-/**
- * İki sayfayı hücre hücre karşılaştırır. Tek tek piksellere değil hücrenin ortalama rengine bakar:
- * kenar yumuşatma gibi çizim gürültüsü fark sayılmaz, eksik bir logo ya da çizgi sayılır.
- */
+/** İki sayfayı karşılaştırır. Hesabın kendisi sunucuyla ortaktır (gorsel-fark.ts); burada yalnızca tuval ve boyama var. */
 export function sayfalariKarsilastir(a: HTMLCanvasElement, bHam: HTMLCanvasElement, no: number): SayfaFarki {
   // B'nin boyutu farklıysa A'nın boyutuna getirilir.
   let b = bHam;
@@ -140,89 +134,21 @@ export function sayfalariKarsilastir(a: HTMLCanvasElement, bHam: HTMLCanvasEleme
   const boy = a.height;
   const pa = a.getContext("2d", { willReadFrequently: true })!.getImageData(0, 0, en, boy).data;
   const pb = b.getContext("2d", { willReadFrequently: true })!.getImageData(0, 0, en, boy).data;
-  const kenar = HUCRE * OLCEK;
-  const sutun = Math.ceil(en / kenar);
-  const satir = Math.ceil(boy / kenar);
-  const fark = new Float32Array(sutun * satir);
-  let farkli = 0;
-  for (let hy = 0; hy < satir; hy++) {
-    for (let hx = 0; hx < sutun; hx++) {
-      const t = [0, 0, 0, 0, 0, 0];
-      let adet = 0;
-      for (let y = hy * kenar; y < Math.min(boy, (hy + 1) * kenar); y++) {
-        let i = (y * en + hx * kenar) * 4;
-        for (let x = hx * kenar; x < Math.min(en, (hx + 1) * kenar); x++, i += 4) {
-          t[0]! += pa[i]!;
-          t[1]! += pa[i + 1]!;
-          t[2]! += pa[i + 2]!;
-          t[3]! += pb[i]!;
-          t[4]! += pb[i + 1]!;
-          t[5]! += pb[i + 2]!;
-          adet++;
-        }
-      }
-      const d = Math.max(Math.abs(t[0]! - t[3]!), Math.abs(t[1]! - t[4]!), Math.abs(t[2]! - t[5]!)) / (adet * 255);
-      if (d >= ESIK) {
-        fark[hy * sutun + hx] = d;
-        farkli++;
-      }
-    }
-  }
-  if (!farkli) return { no, bolgeler: [], katman: null, oran: 0 };
+  const h = hucreFarki(pa, pb, en, boy);
+  if (!h.farkli) return { no, bolgeler: [], katman: null, oran: 0 };
 
-  // Komşu farklı hücreler tek bölge olur.
-  const bolgeler: GorselBolge[] = [];
-  const gorulen = new Uint8Array(sutun * satir);
-  for (let bas = 0; bas < fark.length; bas++) {
-    if (!fark[bas] || gorulen[bas]) continue;
-    let x0 = sutun;
-    let x1 = 0;
-    let y0 = satir;
-    let y1 = 0;
-    let toplam = 0;
-    let adet = 0;
-    const yigin = [bas];
-    gorulen[bas] = 1;
-    while (yigin.length) {
-      const h = yigin.pop()!;
-      const hx = h % sutun;
-      const hy = (h - hx) / sutun;
-      x0 = Math.min(x0, hx);
-      x1 = Math.max(x1, hx);
-      y0 = Math.min(y0, hy);
-      y1 = Math.max(y1, hy);
-      toplam += fark[h]!;
-      adet++;
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
-          const kx = hx + dx;
-          const ky = hy + dy;
-          if (kx < 0 || ky < 0 || kx >= sutun || ky >= satir) continue;
-          const k = ky * sutun + kx;
-          if (fark[k] && !gorulen[k]) {
-            gorulen[k] = 1;
-            yigin.push(k);
-          }
-        }
-      }
-    }
-    if (adet < 2 && toplam < 0.15) continue; // tek hücrelik soluk fark: gürültü
-    bolgeler.push({ sayfa: no, x: x0 * HUCRE, y: y0 * HUCRE, en: (x1 - x0 + 1) * HUCRE, boy: (y1 - y0 + 1) * HUCRE, siddet: Math.min(1, toplam / adet / 0.5) });
-  }
-  bolgeler.sort((p, q) => q.en * q.boy * q.siddet - p.en * p.boy * p.siddet);
-
-  const katman = tuval(sutun, satir);
+  const katman = tuval(h.sutun, h.satir);
   const kc = katman.getContext("2d")!;
-  const kd = kc.createImageData(sutun, satir);
-  for (let i = 0; i < fark.length; i++) {
-    if (!fark[i]) continue;
+  const kd = kc.createImageData(h.sutun, h.satir);
+  for (let i = 0; i < h.fark.length; i++) {
+    if (!h.fark[i]) continue;
     kd.data[i * 4] = 214;
     kd.data[i * 4 + 1] = 36;
     kd.data[i * 4 + 2] = 159;
-    kd.data[i * 4 + 3] = Math.round(90 + 120 * Math.min(1, fark[i]! / 0.4));
+    kd.data[i * 4 + 3] = Math.round(90 + 120 * Math.min(1, h.fark[i]! / 0.4));
   }
   kc.putImageData(kd, 0, 0);
-  return { no, bolgeler: bolgeler.slice(0, 120), katman: katman.toDataURL("image/png"), oran: farkli / fark.length };
+  return { no, bolgeler: bolgeleriBul(h, no), katman: katman.toDataURL("image/png"), oran: h.farkli / h.fark.length };
 }
 
 /** İki belgenin ortak sayfalarını karşılaştırır. */

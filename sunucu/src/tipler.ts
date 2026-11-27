@@ -127,7 +127,13 @@ export interface KarsilastirIstegi {
   yalniz_yapi?: boolean;
   /** false verilirse LLM çağrılmaz; yalnızca makine farkları döner. */
   llm?: boolean;
+  /**
+   * Görüntü farkı bölgeleri. Arayüz bunları tarayıcıda hesaplayıp gönderir.
+   * Alan hiç verilmezse (API'yi arayüzsüz çağıranlar) sunucu sayfaları kendisi çizip hesaplar.
+   */
   gorsel_bolgeler?: GorselBolge[];
+  /** false verilirse sunucu görüntü farkı hesaplamaz; yalnızca metin karşılaştırılır. */
+  gorsel_fark?: boolean;
   /** Görsel girdi açıksa: sayfa görüntüleri (data:image/jpeg;base64,...). */
   goruntuler?: { a: string[]; b: string[] };
 }
@@ -202,4 +208,30 @@ export interface SinamaSonucu {
   tamam: boolean;
   adimlar: SinamaAdimi[];
   modeller: string[];
+}
+
+export type IsDurumu = "sirada" | "calisiyor" | "bitti" | "hata";
+
+/** v1 API'sinde bir karşılaştırma işinin durumu. */
+export interface IsYaniti {
+  kimlik: string;
+  durum: IsDurumu;
+  /** Sıradaysa kaçıncı olduğu (1: sıradaki ilk iş). */
+  sira?: number;
+  olusturma: string;
+  baslama?: string;
+  bitis?: string;
+  sure_ms?: number;
+  /** durum "bitti" ise. */
+  rapor?: Rapor;
+  /** durum "hata" ise. */
+  hata?: string;
+}
+
+export interface SaglikYaniti {
+  durum: "ayakta";
+  surum: string;
+  llm_tanimli: boolean;
+  sirada: number;
+  calisan: number;
 }
