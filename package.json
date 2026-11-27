@@ -1,0 +1,39 @@
+{
+  "name": "ekstre-karsilastir",
+  "version": "0.1.0",
+  "private": true,
+  "description": "İki ekstre PDF'ini (eski sistem ile yeni sistem ya da iki şablon) karşılaştırır; farkları kurum içi LLM ile yorumlar.",
+  "type": "module",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "scripts": {
+    "start": "tsx sunucu/src/index.ts",
+    "build": "vite build",
+    "gelistir": "vite",
+    "typecheck": "tsc -p sunucu/tsconfig.json && tsc -p arayuz/tsconfig.json",
+    "test": "vitest run",
+    "ornek": "tsx araclar/ornek-uret.ts"
+  },
+  "dependencies": {
+    "@fastify/static": "^11.0.0",
+    "diff": "^9.0.0",
+    "fastify": "^5.12.8",
+    "pdfjs-dist": "^6.5.438",
+    "tsx": "^4.23.15"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.11",
+    "@types/pdfkit": "^0.17.7",
+    "@types/react": "^19.3.3",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "dejavu-fonts-ttf": "^2.37.3",
+    "pdfkit": "^0.21.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.4.0",
+    "vitest": "^5.1.2"
+  }
+}

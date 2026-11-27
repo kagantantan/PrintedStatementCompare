@@ -1,0 +1,6 @@
+1. Adres bloğunun altına bir kampanya kutusu eklensin.
+2. Hesap bilgilerinden "Nakit Çekim Limiti" satırı kaldırılsın.
+3. İşlem tablosunda "Puan" sütununun adı "Kazanılan Puan" olsun.
+4. Dipnottaki iletişim merkezi numarası 444 0 000 olarak değişsin.
+5. Logo sayfanın sağ üst köşesine taşınsın.
+6. Faiz oranları bölümüne "Yıllık Maliyet Oranı" satırı eklensin.

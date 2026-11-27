@@ -1,0 +1,6 @@
+node_modules/
+arayuz/dist/
+*.log
+.DS_Store
+# Gerçek ekstreler buraya konursa repoya girmesin
+gercek/
